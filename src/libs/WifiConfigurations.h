@@ -11,7 +11,7 @@
 Ticker pairingModeTicker;
 
 int httpCode = 0;
-String server ,port, freqMinutes, sensorName;
+String server ,port, freqMinutes, sensorName="";
 bool shouldSaveConfig = false;
 WiFiManager wifiManager;
 
@@ -115,6 +115,7 @@ void setupWifiManager()
     }
     pairingModeTicker.detach();
     digitalWrite(D2, HIGH);
-    Serial.println("I have connection to wifi.");
     getSavedConfig();
+    Serial.println("I have connection to wifi.");
+
 }
