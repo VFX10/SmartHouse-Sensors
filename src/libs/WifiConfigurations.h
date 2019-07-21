@@ -11,7 +11,7 @@
 Ticker pairingModeTicker;
 
 int httpCode = 0;
-String server ,port, freqMinutes, sensorName = "";
+String server ,port, freqMinutes, sensorName;
 bool shouldSaveConfig = false;
 WiFiManager wifiManager;
 
