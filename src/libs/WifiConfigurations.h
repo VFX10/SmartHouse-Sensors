@@ -11,7 +11,7 @@
 Ticker pairingModeTicker;
 
 int httpCode = 0;
-String server ,port, freqMinutes, sensorName="";
+String server ,port, freqMinutes, sensorName="", sensorType;
 bool shouldSaveConfig = false;
 WiFiManager wifiManager;
 
@@ -55,6 +55,7 @@ void getSavedConfig()
                 port = json.get<String>("port");
                 freqMinutes = json.get<String>("freqMinutes");
                 sensorName = json.get<String>("sensorName");
+                sensorType = json.get<String>("sensorType");
             }
             else
             {
@@ -73,11 +74,13 @@ void setupWifiManager()
     WiFiManagerParameter customPort("port", "port", port.c_str(), 6);
     WiFiManagerParameter customFreq("Freq", "Frecventa citire", freqMinutes.c_str(), 2);
     WiFiManagerParameter customSensorName("sensorName", "Nume senzor", sensorName.c_str(), 50);
+    WiFiManagerParameter customSensorType("sensortype", "Tip senzor", sensorType.c_str(), 50);
     wifiManager.setSaveConfigCallback(saveConfigCallback);
     wifiManager.addParameter(&customIp);
     wifiManager.addParameter(&customPort);
     wifiManager.addParameter(&customFreq);
     wifiManager.addParameter(&customSensorName);
+    wifiManager.addParameter(&customSensorType);
     wifiManager.setAPCallback(configModeCallback);
     if (!wifiManager.autoConnect("TempSensor"))
     {
@@ -93,6 +96,7 @@ void setupWifiManager()
     port = customPort.getValue();
     freqMinutes = customFreq.getValue();
     sensorName = customSensorName.getValue();
+    sensorType = customSensorType.getValue();
 
     Serial.println("Dupa Configurare " + sensorName);
 
@@ -105,6 +109,8 @@ void setupWifiManager()
         json["port"] = port;
         json["freqMinutes"] = freqMinutes;
         json["sensorName"] = sensorName;
+        json["sensorType"] = sensorType;
+        
 
         File configFile = SPIFFS.open("/config.json", "w");
 

@@ -4,11 +4,27 @@
 #include <libs/WebRequests.h>
 
 WebRequests webRequests;
-MqttHelper mqttClient(IPAddress(192,168,101,184), 1883);
+MqttHelper mqttClient(IPAddress(10,3,141,1), 1883);
 // 192.168.101.184
 void setup()
 {
   Serial.begin(9600);
+
+Serial.println("Saving configuration file");
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject &json = jsonBuffer.createObject();
+        json["server"] = "10.3.141.1";
+        json["port"] = "8000";
+        json["freqMinutes"] = "5";
+        json["sensorName"] = WiFi.macAddress();
+        json["sensorType"] = "temperature and humidity";
+
+        File configFile = SPIFFS.open("/config.json", "w");
+
+        json.printTo(Serial);
+        json.printTo(configFile);
+        configFile.close();
+
   setupWifiManager();
   webRequests = WebRequests(&server, &port);
 
