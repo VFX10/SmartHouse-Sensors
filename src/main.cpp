@@ -4,18 +4,18 @@
 #include <libs/WebRequests.h>
 
 WebRequests webRequests;
-MqttHelper mqttClient(IPAddress(192,168,0,112), 1883);
-
+MqttHelper mqttClient(IPAddress(192,168,101,184), 1883);
+// 192.168.101.184
 void setup()
 {
   Serial.begin(9600);
   setupWifiManager();
   webRequests = WebRequests(&server, &port);
-  
+
   tempSensorInit(D4, atoi(freqMinutes.c_str()));
   //mqttClient.client.connect(sensorName.c_str());
    mqttClient.connect(sensorName);
- webRequests.Post("/api/registerSensor", "{\"sensorName\":\"" + sensorName + "\",\"macAddress\":\"" + WiFi.macAddress() + "\",\"sensorType\":\"temperature and humidity\"}");
+ webRequests.Post("/api/registerSensor", "{\"sensorName\":\"" + sensorName + "\",\"macAddress\":\"" + WiFi.macAddress() + "\",\"sensorType\":\"temperature and humidity\",\"readingFrequency\":" + freqMinutes + "}");
   //Serial.println("Going into deep sleep for " + String(deepSleepFreq) + " minutes");
   //ESP.(deepSleepFreq * (60e6));
   //node-red
