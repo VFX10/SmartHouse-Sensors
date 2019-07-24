@@ -76,6 +76,14 @@ public:
                 {
                     hardwareButtons.instantReset();
                 }
+                else if (obj["event"] == "on")
+                {
+                      digitalWrite(D8, LOW);
+                }
+                else if (obj["event"] == "off")
+                {
+                      digitalWrite(D8, HIGH);
+                }
                 else if (obj["event"] == "config")
                 {
                     Serial.println("Saving configuration file");
@@ -96,6 +104,7 @@ public:
                         json["port"] = currentSettingsJson.get<String>("port");
                         json["freqMinutes"] = obj["config"]["freq"];
                         json["sensorName"] = obj["config"]["name"];
+                        json["sensorType"] = obj["config"]["sensorType"];
 
                         File configFile = SPIFFS.open("/config.json", "w");
 

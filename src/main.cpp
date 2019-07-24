@@ -9,8 +9,9 @@ int *mqttPort = new int(1883);
 MqttHelper *mqttClient = new MqttHelper(addr, mqttPort);
 void setup()
 {
+  pinMode(D8, OUTPUT);
   Serial.begin(9600);
-
+  digitalWrite(D8, HIGH);
   setupWifiManager();
   webRequests = WebRequests(&server, &port);
   addr->fromString(server);
@@ -20,7 +21,17 @@ void setup()
   //mqttClient.client.connect(sensorName.c_str());
   mqttClient->connect(WiFi.macAddress());
   //mqttClient->client.setCallback(callback);
-  webRequests.Post("/api/registerSensor", "{\"sensorName\":\"" + sensorName + "\",\"macAddress\":\"" + WiFi.macAddress() + "\",\"sensorType\":\"temperature and humidity\",\"readingFrequency\":" + freqMinutes + "}");
+
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &json = jsonBuffer.createObject();
+  json["macAddress"] = WiFi.macAddress();
+  json["sensorName"] = sensorName;
+  json["sensorType"] = sensorType;
+  json["readingFrequency"] = freqMinutes;
+  String data;
+  json.prettyPrintTo(data);
+
+  mqttClient->publish("SensorsConfigChannel", data.c_str());
   //Serial.println("Going into deep sleep for " + String(deepSleepFreq) + " minutes");
   //ESP.(deepSleepFreq * (60e6));
   //node-red
@@ -43,8 +54,11 @@ void loop()
     json["data"] = readDataFromSensor();
     String data;
     json.prettyPrintTo(data);
-    mqttClient->publish("SensorsDataChannel", data.c_str());
+    //mqttClient->publish("SensorsDataChannel", data.c_str());
   }
   mqttClient->client.loop();
+
+
   delay(10000);
+
 }
