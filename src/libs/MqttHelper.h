@@ -1,8 +1,10 @@
+#include <Arduino.h>
 #include <Ticker.h>
 #include <PubSubClient.h>
 #include <ESP8266WiFi.h>
 #include <ArduinoJson.h>
 #include <libs\ConfigButtons.h>
+#include <libs/SwitchRelay.h>
 
 ConfigButtons hardwareButtons(D1, D3);
 
@@ -13,6 +15,7 @@ void callback(char *topic, byte *payload, unsigned int length)
 class MqttHelper
 {
 private:
+    SwitchRelay *relay = new SwitchRelay();
     WiFiClient espClient;
 
     Ticker mqttTicker;
@@ -51,7 +54,7 @@ public:
             //client = PubSubClient(*(this->domain)->c_str(), *(this->port), callback, espClient);
         }
 
-        client.setCallback([](char *topic, byte *payload, unsigned int length) {
+        client.setCallback([&](char *topic, byte *payload, unsigned int length) {
             Serial.println("callback");
             char *msg = (char *)payload;
             StaticJsonBuffer<200> jsonBuffer;
@@ -65,7 +68,7 @@ public:
             String receivedMacAddress = obj.get<String>("macAddress");
             deviceMacAddress.toUpperCase();
             receivedMacAddress.toUpperCase();
-            if (receivedMacAddress.compareTo(deviceMacAddress)== 0)
+            if (receivedMacAddress.compareTo(deviceMacAddress) == 0)
             {
                 Serial.println("Eu is");
                 if (obj["event"] == "reboot")
@@ -78,11 +81,29 @@ public:
                 }
                 else if (obj["event"] == "on")
                 {
-                      digitalWrite(D8, LOW);
+                    // digitalWrite(D8, LOW);
+                    *(this->relay)->changeState(LOW);
+                    DynamicJsonBuffer jsonBuffer;
+                    JsonObject &json = jsonBuffer.createObject();
+                    json["macAddress"] = WiFi.macAddress();
+                    json["sensorName"] = sensorName;
+                    json["state"] = 1;
+                    String data;
+                    json.prettyPrintTo(data);
+                    publish("response", data.c_str());
                 }
                 else if (obj["event"] == "off")
                 {
-                      digitalWrite(D8, HIGH);
+                    // digitalWrite(D8, HIGH);
+                    *(this->relay)->changeState(HIGH);
+                    DynamicJsonBuffer jsonBuffer;
+                    JsonObject &json = jsonBuffer.createObject();
+                    json["macAddress"] = WiFi.macAddress();
+                    json["sensorName"] = sensorName;
+                    json["state"] = 0;
+                    String data;
+                    json.prettyPrintTo(data);
+                    publish("response", data.c_str());
                 }
                 else if (obj["event"] == "config")
                 {

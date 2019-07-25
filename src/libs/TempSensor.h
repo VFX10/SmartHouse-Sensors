@@ -8,6 +8,7 @@ long freqRead;
 float readTemperature();
 float readHumidity();
 
+
 void tempSensorInit(const uint8_t port, const int freq)
 {
     dht = DHT(port, DHT11);

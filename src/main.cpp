@@ -2,18 +2,23 @@
 #include <libs/TempSensor.h>
 #include <libs/MqttHelper.h>
 #include <libs/WebRequests.h>
+#include <libs/SwitchRelay.h>
+#include <libs/LightSensor.h>
+
+uint8_t *RELAY_PIN = new uint8_t(D7);
 
 IPAddress *addr = new IPAddress();
-WebRequests webRequests;
 int *mqttPort = new int(1883);
 MqttHelper *mqttClient = new MqttHelper(addr, mqttPort);
+LightSensor lightSensor(D5, D6, BH1750::CONTINUOUS_HIGH_RES_MODE_2);
+SwitchRelay relay(RELAY_PIN);
+
 void setup()
 {
-  pinMode(D8, OUTPUT);
+
   Serial.begin(9600);
-  digitalWrite(D8, HIGH);
+
   setupWifiManager();
-  webRequests = WebRequests(&server, &port);
   addr->fromString(server);
   mqttClient->initMqtt();
 
@@ -54,11 +59,9 @@ void loop()
     json["data"] = readDataFromSensor();
     String data;
     json.prettyPrintTo(data);
+    json.prettyPrintTo(Serial);
     //mqttClient->publish("SensorsDataChannel", data.c_str());
   }
-  mqttClient->client.loop();
-
-
-  delay(10000);
-
+  lightSensor.ReadLight();
+  delay(2000);
 }
