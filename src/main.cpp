@@ -4,18 +4,21 @@
 #include <libs/WebRequests.h>
 #include <libs/SwitchRelay.h>
 #include <libs/LightSensor.h>
+#include <libs/InlineContact.h>
 
 uint8_t *RELAY_PIN = new uint8_t(D7);
+uint8_t *CONTACT_PIN = new uint8_t(D8);
 
 IPAddress *addr = new IPAddress();
 int *mqttPort = new int(1883);
 MqttHelper *mqttClient = new MqttHelper(addr, mqttPort);
 LightSensor lightSensor(D5, D6, BH1750::CONTINUOUS_HIGH_RES_MODE_2);
-SwitchRelay relay(RELAY_PIN);
+// SwitchRelay relay(RELAY_PIN);
+InlineContact contact(CONTACT_PIN);
 
 void setup()
 {
-
+pinMode(D7, OUTPUT);
   Serial.begin(9600);
 
   setupWifiManager();
@@ -62,6 +65,22 @@ void loop()
     json.prettyPrintTo(Serial);
     //mqttClient->publish("SensorsDataChannel", data.c_str());
   }
+  float sensorVoltage;
+  float sensorValue;
+
+  sensorValue = analogRead(A0);
+  sensorVoltage = sensorValue/1024*3.3;
+  Serial.print("sensor reading = ");
+  Serial.print(sensorValue);
+  Serial.println("");
+  Serial.print("sensor voltage = ");
+  Serial.print(sensorVoltage);
+  Serial.println(" V");
+  // delay(1000);
+  Serial.print("Contact status: ");
+  Serial.println(contact.getState());
   lightSensor.ReadLight();
-  delay(2000);
+  tone(D7, 2000, 1000);
+  delay(1000);
+  //noTone(D7);
 }
