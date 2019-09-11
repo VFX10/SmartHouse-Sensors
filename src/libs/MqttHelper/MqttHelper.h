@@ -5,26 +5,21 @@
 MqttHelper::MqttHelper() {}
 MqttHelper::MqttHelper(std::string *&server, int *&port)
 {
-    // client = PubSubClient(espClient);
     this->domain = server;
     this->port = port;
 }
 MqttHelper::MqttHelper(IPAddress *&srv, int *&port)
 {
-    // client = PubSubClient(espClient);
     this->server = srv;
     this->port = port;
 }
 MqttHelper::~MqttHelper()
 {
-    Serial.println("destructor hit");
     client.disconnect();
 }
 
 void MqttHelper::initMqtt()
 {
-    //client = PubSubClient(espClient);
-
     Serial.print(*(this->server));
     Serial.println(*(this->port));
     if ((*(this->domain)).compare("") == 0)
@@ -50,7 +45,6 @@ void MqttHelper::initMqtt()
         receivedMacAddress.toUpperCase();
         if (receivedMacAddress.compareTo(deviceMacAddress) == 0)
         {
-            Serial.println("Eu is");
             if (obj["event"] == "reboot")
             {
                 ESP.restart();
@@ -117,30 +111,22 @@ void MqttHelper::initMqtt()
                 }
             }
         }
-        else
-        {
-            Serial.println("Nu sunt eu");
-        }
     });
+    this->client.connect(WiFi.macAddress().c_str());
 }
 void MqttHelper::connect(String name)
 {
 
     this->mqttTicker.detach();
-    this->client.connect(name.c_str());
-    if (this->client.connected())
+    if (this->client.connect(name.c_str()))
     {
         if (this->client.subscribe("SensorsSetingsChannel"))
         {
             Serial.println("Succesfully subscribed to SensorsSetingsChannel");
         }
-        this->mqttTicker.attach(1, [&]() {Serial.print("."); this->client.loop(); });
-    }
-    if (!this->registerModule())
-    {
-        delay(5000);
-        this->hardwareButtons.instantReset();
-        return;
+        this->mqttTicker.attach(1, [&]() {
+            this->client.loop();
+        });
     }
 }
 bool MqttHelper::isConnected()
@@ -163,6 +149,7 @@ bool MqttHelper::registerModule()
         json["readingFrequency"] = wifi.freqMinutes;
         String data;
         json.prettyPrintTo(data);
+        json.prettyPrintTo(Serial);
 
         this->publish("SensorsConfigChannel", data.c_str());
         return true;

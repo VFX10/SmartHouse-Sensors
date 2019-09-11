@@ -5,28 +5,30 @@
 
 HardwareButtons::HardwareButtons()
 {
-    pinMode(RESET_BUTTON_DEFAULT_PIN, INPUT_PULLUP);
-    pinMode(REBOOT_BUTTON_DEFAULT_PIN, INPUT_PULLUP);
-    resetTicker.attach(1, [&]() {
-        static int count;
-        count = !digitalRead(RESET_BUTTON_DEFAULT_PIN) ? count + 1 : 0;
-        if (count == 10)
+    //pinMode(RESET_BUTTON_DEFAULT_PIN, INPUT_PULLUP);
+    //pinMode(REBOOT_BUTTON_DEFAULT_PIN, INPUT);
+    myBtn->begin();
+
+    rebootTicker.attach(0.1, [&]() {
+        myBtn->read();
+        if (myBtn->wasReleased()){
+            {
+            Serial.println("Sensor will reboot now.");
+            ESP.restart();
+        }
+        }
+        else if (myBtn->pressedFor(5000))
         {
             digitalWrite(STATUS_LED_DEFAULT_PIN, LOW);
+            //while(!digitalRead(RESET_BUTTON_DEFAULT_PIN));
             Serial.println("Sensor will reset now.");
-            SPIFFS.remove("/config.json");
+            // SPIFFS.remove("/config.json");
             this->mng.resetSettings();
             delay(5000);
             digitalWrite(STATUS_LED_DEFAULT_PIN, HIGH);
         }
     });
-    rebootTicker.attach(0.1, []() {
-        if (!digitalRead(REBOOT_BUTTON_DEFAULT_PIN))
-        {
-            Serial.println("Sensor will reboot now.");
-            ESP.restart();
-        }
-    });
+
     Serial.println("Sensor initialized");
 }
 void HardwareButtons::instantReset()

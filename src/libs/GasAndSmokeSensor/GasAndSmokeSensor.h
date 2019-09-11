@@ -42,7 +42,7 @@ String GasAndSmokeSensor::read()
     json.printTo(jsonString);
     json.prettyPrintTo(Serial);
 
-    if (methane > 45 || smoke >= 50)
+    if (methane >= 10 || smoke >= 10)
         tone(this->speakerPin, 2000, 1000);
     else
     {
