@@ -1,20 +1,20 @@
 #pragma once
-
+#include <Arduino.h>
+#include <ArduinoJson.h>
 #include <TroykaMQ.h>
-
+#include <Sensor.h>
 #define MQ2_DEFAULT_PIN A0
 #define MQ2_SPEAKER_DEFAULT_PIN D6
 
-class GasAndSmokeSensor
+class GasAndSmokeSensor : public Sensor
 {
 
 private:
     uint8_t speakerPin = MQ2_SPEAKER_DEFAULT_PIN;
-    MQ2 *mq2 = new MQ2(MQ2_DEFAULT_PIN);
+    MQ2 *mq2;
     void calibrateSensor();
 
 public:
-    GasAndSmokeSensor();
-    GasAndSmokeSensor(uint8_t, uint8_t);
+    GasAndSmokeSensor(int, int);
     String read();
 };

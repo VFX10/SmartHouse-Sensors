@@ -2,24 +2,20 @@
 
 #include <Arduino.h>
 #include <Ticker.h>
-#define RELAY_DEFAULT_PIN D8
+#include <Sensor.h>
+#include <JC_Button.h>
+#define RELAY_DEFAULT_PIN D6
 #define RELAY_BUTTON_DEFAULT_PIN D5
 
-class Relay
+class Relay : public Sensor
 {
 private:
-
     uint8_t pin;
     Ticker swTicker;
-
-    uint8_t stateLED = HIGH;
-    uint8_t stateButton;
-    uint8_t previous = LOW;
-    long time = 0;
-    long debounce = 200;
+    Button *swButton;
 
 public:
-    Relay(uint8_t);
-    void changeState(uint8_t);
-    uint8_t read();
+    Relay(int, int);
+    void changeState(int);
+    String read();
 };

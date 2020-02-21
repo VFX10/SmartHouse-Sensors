@@ -1,20 +1,15 @@
+#pragma once
 #include <libs/InlineContact/InlineContactDefinition.hpp>
-#include <ArduinoJson.h>
-InlineContact::InlineContact()
-{
-    this->pin = INLINE_CONTACT_DEFAULT_PIN;
-}
-InlineContact::InlineContact(uint8_t pin)
+
+InlineContact::InlineContact(int pin = INLINE_CONTACT_DEFAULT_PIN)
 {
     this->pin = pin;
 }
 String InlineContact::read()
 {
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject &json = jsonBuffer.createObject();
+    DynamicJsonDocument json(1024);
     json["state"] = analogRead(this->pin) == 1024;
     String data;
-    json.printTo(data);
-    json.prettyPrintTo(Serial);
+    serializeJson(json, data);
     return data;
 }

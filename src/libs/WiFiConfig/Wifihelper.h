@@ -1,139 +1,209 @@
 #pragma once
-#include <FS.h>
-#include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
-#include <DNSServer.h>
-#include <ESP8266WebServer.h>
-
 #include <libs/WiFiConfig/WiFiHelperDefinition.hpp>
-#include <libs/HardwareButtons/HardwareButtons.h>
 
-Ticker WiFiHelper::pairingModeTicker;
-bool WiFiHelper::shouldSaveConfig = false;
-
-WiFiHelper::WiFiHelper()
+WiFiHelper::WiFiHelper(Sensor *relay = nullptr)
 {
-    this->getSavedConfig();
+    this->relay = relay;
+    webServer = new AsyncWebServer(80);
+    WiFi.mode(WIFI_STA);
 }
-WiFiHelper::WiFiHelper(String ssidName, String password = "")
+DynamicJsonDocument handleTest(AsyncWebServerRequest *request, uint8_t *datas)
 {
-    Serial.println("SSid si Pas Salvat");
-    this->ssidName = ssidName;
-    this->password = password;
+    DynamicJsonDocument doc(1024);
+    deserializeJson(doc, (char *)datas);
+    return doc;
+}
+void WiFiHelper::end()
+{
+    WiFi.stopSmartConfig();
 }
 void WiFiHelper::begin()
 {
-    Serial.println("Am ajuns aici. Doamne ajuta");
     pinMode(STATUS_LED_DEFAULT_PIN, OUTPUT);
-    SPIFFS.begin();
     this->pairingModeTicker.attach(0.6, []() {
         digitalWrite(STATUS_LED_DEFAULT_PIN, !digitalRead(STATUS_LED_DEFAULT_PIN));
     });
-    WiFiManagerParameter customIp("ip", "ip Hub", server.c_str(), 40);
-    WiFiManagerParameter customPort("port", "port", port.c_str(), 6);
-    WiFiManagerParameter customFreq("Freq", "Frecventa citire", freqMinutes.c_str(), 2);
-    WiFiManagerParameter customSensorName("sensorName", "Nume senzor", sensorName.c_str(), 50);
-    WiFiManagerParameter customSensorType("sensortype", "Tip senzor", sensorType.c_str(), 50);
-    wifiManager.setSaveConfigCallback([]() {
-        Serial.println("Should save config");
-        shouldSaveConfig = true;
-    });
-    wifiManager.addParameter(&customIp);
-    wifiManager.addParameter(&customPort);
-    wifiManager.addParameter(&customFreq);
-    wifiManager.addParameter(&customSensorName);
-    wifiManager.addParameter(&customSensorType);
-    wifiManager.setAPCallback([](WiFiManager *) {
-        Serial.println("Entered config mode");
-        pairingModeTicker.attach(0.2, []() {
-            digitalWrite(STATUS_LED_DEFAULT_PIN, !digitalRead(STATUS_LED_DEFAULT_PIN));
-        });
-    });
-    bool status = false;
-    if (password == "")
+    bool configDone = false;
+    if (config->hasWiFiCredentials())
     {
-        // config without password
-        status = wifiManager.autoConnect(ssidName.c_str());
+
+        Serial.println("Sensor allready configured");
+        DynamicJsonDocument doc = config->getWifiCredentials();
+
+        String ssid = doc["ssid"], password = doc["password"];
+        WiFi.begin(ssid.c_str(), password.c_str());
+        configDone = true;
     }
     else
     {
-        // config with password
-        status = wifiManager.autoConnect(ssidName.c_str(), password.c_str());
+        pairingModeTicker.attach(0.2, []() {
+            digitalWrite(STATUS_LED_DEFAULT_PIN, !digitalRead(STATUS_LED_DEFAULT_PIN));
+        });
+        WiFi.beginSmartConfig();
     }
-    if (!status)
+
+    while (WiFi.status() != WL_CONNECTED && !WiFi.smartConfigDone())
     {
-        Serial.println("Failed to connect and hit timeout. Sensor will reset in 3 seconds!");
-        delay(3000);
-        //reset and try again, or maybe put it to deep sleep
-        wifiManager.resetSettings();
-        Serial.println("Sensor succesfuly reset. Module will reboot in 5 seconds.");
-        delay(5000);
-        ESP.reset();
+        delay(500);
+        Serial.print(".");
     }
-    server = customIp.getValue();
-    port = customPort.getValue();
-    freqMinutes = customFreq.getValue();
-    sensorName = customSensorName.getValue();
-    sensorType = customSensorType.getValue();
 
-    Serial.println("Dupa Configurare " + sensorName);
+    apIP = new IPAddress(WiFi.localIP());
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
 
-    if (shouldSaveConfig)
-    {
-        Serial.println("Saving configuration file");
-        DynamicJsonBuffer jsonBuffer;
-        JsonObject &json = jsonBuffer.createObject();
-        json["server"] = server;
-        json["port"] = port;
-        json["freqMinutes"] = freqMinutes;
-        json["sensorName"] = sensorName;
-        json["sensorType"] = sensorType;
-
-        File configFile = SPIFFS.open("/config.json", "w");
-
-        json.printTo(Serial);
-        json.printTo(configFile);
-        configFile.close();
-        //end save
-    }
-    this->pairingModeTicker.detach();
-    digitalWrite(D3, HIGH);
-    getSavedConfig();
-    Serial.println("I have connection to wifi.");
-}
-void WiFiHelper::getSavedConfig()
-{
-    Serial.println("mounted file system");
-    if (SPIFFS.exists("/config.json"))
-    {
-        //file exists, reading and loading
-        Serial.println("reading config file");
-        File configFile = SPIFFS.open("/config.json", "r");
-        if (configFile)
+    dnsServer.start(DNS_PORT, "*", *apIP);
+    webServer->begin();
+    webServer->on("/api/getConfig", HTTP_GET, [&](AsyncWebServerRequest *request) {
+        if (sensorType == SENSOR_UNDEFINED)
         {
-            Serial.println("opened config file");
-            size_t size = configFile.size();
-            // Allocate a buffer to store contents of the file.
-            std::unique_ptr<char[]> buf(new char[size]);
-
-            configFile.readBytes(buf.get(), size);
-            DynamicJsonBuffer jsonBuffer;
-            JsonObject &json = jsonBuffer.parseObject(buf.get());
-            json.prettyPrintTo(Serial);
-            if (json.success())
+            request->send(200, "application/json", "{\"error\": \"Sensor undefined\"}");
+        }
+        else
+        {
+            DynamicJsonDocument json(1024);
+            auto error = deserializeJson(json, config->readConfig());
+            if (!error)
             {
-                Serial.println("\nparsed json");
-                server = json.get<String>("server");
-                port = json.get<String>("port");
-                freqMinutes = json.get<String>("freqMinutes");
-                sensorName = json.get<String>("sensorName");
-                sensorType = json.get<String>("sensorType");
+                DynamicJsonDocument payloadJson(1024);
+                payloadJson["sensorName"] = json["sensorName"];
+                payloadJson["freqMinutes"] = json["freqMinutes"];
+                payloadJson["sensorType"] = json["sensorType"];
+                payloadJson["server"] = json["server"];
+                payloadJson["port"] = json["port"];
+                payloadJson["macAddress"] = WiFi.macAddress();
+                String data;
+                serializeJson(payloadJson, data);
+                request->send(200, "application/json", data);
             }
             else
             {
-                Serial.println("failed to load json config");
+                request->send(200, "application/json", "{\"error\": \"Error getting device config\"}");
             }
-            configFile.close();
         }
+    });
+
+    webServer->on("/api/events", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [&](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            auto jsonData = handleTest(request, data);
+            DynamicJsonDocument jsonResponse(1024);
+        String event;
+        Serial.println("Received event");
+
+        serializeJsonPretty(jsonData, Serial);
+        auto ticker = new Ticker();
+        if (jsonData["event"] == "reboot")
+        {
+
+            ticker->once(5, [&]() {
+                Serial.println("I'm rebooting.");
+                ESP.restart();
+            });
+
+            request->send(200, "application/json", "{\"response\": \"Sensor will reboot in 5 seconds\"}");
+        }
+        else if (jsonData["event"] == "reset")
+        {
+            ticker->once(5, [&]() {
+                Serial.println("I'm reseting.");
+                hardwareButtons.instantReset();
+            });
+            request->send(200, "application/json", "{\"response\": \"Sensor will reset in 5 seconds\"}");
+        }
+        else if (jsonData["event"] == "on")
+        {
+            if (relay == nullptr)
+            {
+                request->send(200, "application/json", "{\"response\": \"Event not permitted\"}");
+            }
+            else
+            {
+                relay->changeState(HIGH);
+                DynamicJsonDocument json(1024);
+                json["macAddress"] = WiFi.macAddress();
+                json["state"] = 1;
+                String data;
+                serializeJson(json, data);
+                request->send(200, "application/json", data);
+            }
+        }
+        else if (jsonData["event"] == "off")
+        {
+            if (relay == nullptr)
+            {
+                request->send(200, "application/json", "{\"response\": \"Event not permitted\"}");
+            }
+            else
+            {
+                relay->changeState(LOW);
+                DynamicJsonDocument json(1024);
+                json["macAddress"] = WiFi.macAddress();
+                json["state"] = 0;
+                String data;
+                serializeJson(json, data);
+                request->send(200, "application/json", data);
+            }
+        }
+        request->send(500, "application/json", "{\"error\": \"Wrong command\"}"); });
+    webServer->on("/api/config", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [&](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            auto jsonData = handleTest(request, data);
+            DynamicJsonDocument jsonResponse(1024);
+            String response;
+            int statusCode = 200;
+            if (!jsonData.isNull())
+            {
+                DynamicJsonDocument currentConfig(1024);
+                DynamicJsonDocument json(1024);
+                deserializeJson(currentConfig, config->readConfig());
+
+                json["sensorName"] = currentConfig["sensorName"];
+                json["freqMinutes"] = currentConfig["freqMinutes"];
+                if (jsonData.containsKey("sensorName"))
+                {
+                    json["sensorName"] = jsonData["sensorName"];
+                }
+                if (jsonData.containsKey("freqMinutes"))
+                {
+                    json["freqMinutes"] = jsonData["freqMinutes"];
+                }
+                json["ssid"] = jsonData["ssid"];
+                json["password"] = jsonData["password"];
+                json["server"] = jsonData["server"];
+                json["port"] = jsonData["port"];
+
+                jsonResponse["macAddress"] = WiFi.macAddress();
+                jsonResponse["message"] = "Sensor will reboot in 5 secconds!";
+                serializeJson(jsonResponse, response);
+                configDone = config->writeConfig(json);
+            }
+            else
+            {
+                response = "{\"error\": \"invalid configuration\"}";
+                statusCode = 500;
+                Serial.println("failed to load json config");
+                configDone = false;
+            }
+            auto b = new Ticker();
+            b->once(5, [&]() {
+                Serial.println("I'm rebooting.");
+                ESP.restart();
+            });
+            request->send(statusCode, "application/json", response); });
+
+    webServer->onNotFound([&](AsyncWebServerRequest *request) {
+        Serial.println("am intrat in 404");
+        request->send(404, "application/json", "{\"error\": \"page not found\"}");
+    });
+
+    this->webServerConfigTicker.attach(0.1, [&]() {
+        dnsServer.processNextRequest();
+    });
+    if (!configDone)
+        Serial.println("Waiting for configuration file");
+    while (!configDone)
+    {
+        Serial.print(".");
+        delay(500);
     }
+    this->pairingModeTicker.detach();
+    digitalWrite(D3, HIGH);
 }

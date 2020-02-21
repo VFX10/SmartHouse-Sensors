@@ -1,20 +1,10 @@
 #pragma once
-
-#include <Arduino.h>
 #include <libs/UV_Sensor/UVDefinition.hpp>
-#include <ArduinoJson.h>
 
-using namespace std;
-
-UVSensor::UVSensor()
-{
-    this->pin = UV_SENSOR_DEFAULT_PIN;
-}
-UVSensor::UVSensor(uint8_t pin)
+UVSensor::UVSensor(int pin = UV_SENSOR_DEFAULT_PIN)
 {
     this->pin = pin;
 }
-
 int UVSensor::getUVIndex()
 {
     int voltage = (analogRead(this->pin) * (5.0 / 1023.0)) * 1000;
@@ -76,13 +66,12 @@ int UVSensor::getUVIndex()
 
 String UVSensor::read()
 {
-    int valueFromSensor = this->getUVIndex();
+    int valueFromSensor = getUVIndex();
 
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject &json = jsonBuffer.createObject();
+    DynamicJsonDocument json(1024);
     json["UVIndex"] = valueFromSensor == -1 ? "Error reading UV index" : String(valueFromSensor);
     String jsonString;
-    json.printTo(jsonString);
-    json.prettyPrintTo(Serial);
+    serializeJson(json, jsonString);
+    // json.prettyPrintTo(Serial);
     return jsonString;
 }

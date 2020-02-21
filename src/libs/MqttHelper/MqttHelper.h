@@ -1,16 +1,33 @@
-#pragma once
 #include <libs/MqttHelper/MqttHelperDefinition.hpp>
-#include <ArduinoJson.h>
 
-MqttHelper::MqttHelper() {}
-MqttHelper::MqttHelper(std::string *&server, int *&port)
+MqttHelper::MqttHelper(Config *config = new Config(), Sensor *relay = nullptr, int port = 1883)
 {
-    this->domain = server;
-    this->port = port;
-}
-MqttHelper::MqttHelper(IPAddress *&srv, int *&port)
-{
-    this->server = srv;
+    this->config = config;
+    auto address = this->config->getServerAddress();
+    if (server->fromString(address))
+    {
+        Serial.println("IP");
+        int Parts[4] = {0, 0, 0, 0};
+        int Part = 0;
+        for (int i = 0; i < address.length(); i++)
+        {
+            char c = address[i];
+            if (c == '.')
+            {
+                Part++;
+                continue;
+            }
+            Parts[Part] *= 10;
+            Parts[Part] += c - '0';
+        }
+        server = new IPAddress(Parts[0], Parts[1], Parts[2], Parts[3]);
+    }
+    else
+    {
+        Serial.println("Domain");
+
+        this->domain = this->config->getServerAddress();
+    }
     this->port = port;
 }
 MqttHelper::~MqttHelper()
@@ -21,65 +38,60 @@ MqttHelper::~MqttHelper()
 void MqttHelper::initMqtt()
 {
     Serial.print(*(this->server));
-    Serial.println(*(this->port));
-    if ((*(this->domain)).compare("") == 0)
+    Serial.print(":");
+    Serial.println(this->port);
+    if (this->domain == "")
     {
-        Serial.println("am primit ip");
-        this->client.setServer(*(this->server), *(this->port));
+        this->client.setServer(*(this->server), this->port);
     }
     else
     {
-        Serial.println("am primit domeniu");
-        this->client.setServer(*(this->domain)->c_str(), *(this->port));
+        this->client.setServer(this->domain.c_str(), this->port);
     }
 
     client.setCallback([&](char *topic, byte *payload, unsigned int length) {
         Serial.println("callback");
         char *msg = (char *)payload;
-        StaticJsonBuffer<200> jsonBuffer;
-        JsonObject &obj = jsonBuffer.parseObject(msg);
-        obj.prettyPrintTo(Serial);
+        DynamicJsonDocument json(1024);
+        deserializeJson(json, msg);
+        serializeJsonPretty(json, Serial);
         String deviceMacAddress = WiFi.macAddress();
-        String receivedMacAddress = obj.get<String>("macAddress");
+        String receivedMacAddress = json["macAddress"];
         deviceMacAddress.toUpperCase();
         receivedMacAddress.toUpperCase();
         if (receivedMacAddress.compareTo(deviceMacAddress) == 0)
         {
-            if (obj["event"] == "reboot")
+            if (json["event"] == "reboot")
             {
                 ESP.restart();
             }
-            else if (obj["event"] == "reset")
+            else if (json["event"] == "reset")
             {
                 hardwareButtons.instantReset();
             }
-            else if (obj["event"] == "on")
+            else if (json["event"] == "on" && relay != nullptr)
             {
                 // digitalWrite(D8, LOW);
-                relay.changeState(LOW);
-                DynamicJsonBuffer jsonBuffer;
-                JsonObject &json = jsonBuffer.createObject();
+                relay->changeState(HIGH);
+                DynamicJsonDocument json(1024);
                 json["macAddress"] = WiFi.macAddress();
-                json["sensorName"] = wifi.sensorName;
                 json["state"] = 1;
                 String data;
-                json.prettyPrintTo(data);
+                serializeJsonPretty(json, Serial);
                 publish("response", data.c_str());
             }
-            else if (obj["event"] == "off")
+            else if (json["event"] == "off" && relay != nullptr)
             {
                 // digitalWrite(D8, HIGH);
-                relay.changeState(HIGH);
-                DynamicJsonBuffer jsonBuffer;
-                JsonObject &json = jsonBuffer.createObject();
+                relay->changeState(LOW);
+                DynamicJsonDocument json(1024);
                 json["macAddress"] = WiFi.macAddress();
-                json["sensorName"] = wifi.sensorName;
                 json["state"] = 0;
                 String data;
-                json.prettyPrintTo(data);
+                serializeJsonPretty(json, Serial);
                 publish("response", data.c_str());
             }
-            else if (obj["event"] == "config")
+            else if (json["event"] == "config")
             {
                 Serial.println("Saving configuration file");
                 Serial.println("reading config file");
@@ -92,37 +104,35 @@ void MqttHelper::initMqtt()
                     std::unique_ptr<char[]> buf(new char[size]);
 
                     configFile.readBytes(buf.get(), size);
-                    DynamicJsonBuffer jsonBuffer;
-                    JsonObject &currentSettingsJson = jsonBuffer.parseObject(buf.get());
-                    JsonObject &json = jsonBuffer.createObject();
-                    json["server"] = currentSettingsJson.get<String>("server");
-                    json["port"] = currentSettingsJson.get<String>("port");
-                    json["freqMinutes"] = obj["config"]["freq"];
-                    json["sensorName"] = obj["config"]["name"];
-                    json["sensorType"] = obj["config"]["sensorType"];
+                    DynamicJsonDocument json(1024);
+                    DynamicJsonDocument currentSettingsJson(1024);
+                    deserializeJson(currentSettingsJson, buf.get());
+                    json["server"] = currentSettingsJson["server"];
+                    json["port"] = currentSettingsJson["port"];
+                    json["freqMinutes"] = json["config"]["freq"];
+                    json["sensorName"] = json["config"]["name"];
+                    json["sensorType"] = json["config"]["sensorType"];
 
                     File configFile = SPIFFS.open("/config.json", "w");
 
-                    json.printTo(Serial);
-                    json.printTo(configFile);
+                    serializeJson(json, configFile);
+                    serializeJsonPretty(json, Serial);
                     configFile.close();
                     ESP.restart();
-                    //end save
                 }
             }
         }
     });
-    this->client.connect(WiFi.macAddress().c_str());
+    // this->client.connect(WiFi.macAddress().c_str());
 }
 void MqttHelper::connect(String name)
 {
-
     this->mqttTicker.detach();
     if (this->client.connect(name.c_str()))
     {
-        if (this->client.subscribe("SensorsSetingsChannel"))
+        if (this->client.subscribe("SensorsSettingsChannel"))
         {
-            Serial.println("Succesfully subscribed to SensorsSetingsChannel");
+            Serial.println("Succesfully subscribed to SensorsSettingsChannel");
         }
         this->mqttTicker.attach(1, [&]() {
             this->client.loop();
@@ -136,27 +146,4 @@ bool MqttHelper::isConnected()
 void MqttHelper::publish(String topic, String message)
 {
     this->client.publish(topic.c_str(), message.c_str());
-}
-bool MqttHelper::registerModule()
-{
-    if (this->client.connected())
-    {
-        DynamicJsonBuffer jsonBuffer;
-        JsonObject &json = jsonBuffer.createObject();
-        json["macAddress"] = WiFi.macAddress();
-        json["sensorName"] = wifi.sensorName;
-        json["sensorType"] = wifi.sensorType;
-        json["readingFrequency"] = wifi.freqMinutes;
-        String data;
-        json.prettyPrintTo(data);
-        json.prettyPrintTo(Serial);
-
-        this->publish("SensorsConfigChannel", data.c_str());
-        return true;
-    }
-    else
-    {
-        Serial.println("Module can't be registered, please reset it. Abort All!");
-        return false;
-    }
 }

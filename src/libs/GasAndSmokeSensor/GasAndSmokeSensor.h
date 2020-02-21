@@ -1,18 +1,7 @@
-#include <Arduino.h>
-#include <ArduinoJson.h>
+#pragma once
 #include <libs/GasAndSmokeSensor/GasAndSmokeSensorDefinition.hpp>
 
-#ifndef GAS_SENSOR_H
-#define GAS_SENSOR_H
-
-GasAndSmokeSensor::GasAndSmokeSensor()
-{
-    pinMode(MQ2_SPEAKER_DEFAULT_PIN, OUTPUT);
-    this->mq2 = new MQ2(MQ2_DEFAULT_PIN);
-    this->calibrateSensor();
-}
-
-GasAndSmokeSensor::GasAndSmokeSensor(uint8_t sensorPin, uint8_t speakerPin)
+GasAndSmokeSensor::GasAndSmokeSensor(int sensorPin = MQ2_DEFAULT_PIN, int speakerPin = MQ2_SPEAKER_DEFAULT_PIN)
 {
     this->speakerPin = speakerPin;
     pinMode(this->speakerPin, OUTPUT);
@@ -31,18 +20,17 @@ String GasAndSmokeSensor::read()
 {
 
     long methane = this->mq2->readMethane(), smoke = this->mq2->readSmoke();
-    Serial.println(methane);
-    Serial.println(smoke);
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject &json = jsonBuffer.createObject();
+    // Serial.println(methane);
+    // Serial.println(smoke);
+    DynamicJsonDocument json(1024);
     json["methane"] = methane;
     json["smoke"] = smoke;
 
     String jsonString;
-    json.printTo(jsonString);
-    json.prettyPrintTo(Serial);
+    serializeJson(json, jsonString);
+    // json.prettyPrintTo(Serial);
 
-    if (methane >= 10 || smoke >= 10)
+    if (methane >= 20 || smoke >= 20)
         tone(this->speakerPin, 2000, 1000);
     else
     {
@@ -51,4 +39,3 @@ String GasAndSmokeSensor::read()
 
     return jsonString;
 }
-#endif

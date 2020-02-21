@@ -2,18 +2,17 @@
 #include <Arduino.h>
 #include <dht11.h>
 #include <DHT.h>
-
+#include <Sensor.h>
 #define DHT11_DEFAULT_PIN D5
-class TempSensor
+class TempSensor : public Sensor
 {
 
 private:
-    DHT *dht = new DHT(DHT11_DEFAULT_PIN, DHT11);
+    DHT *dht;
     float readTemperature();
     float readHumidity();
 
 public:
-    TempSensor();
-    TempSensor(uint8_t);
+    TempSensor(int);
     String read();
 };

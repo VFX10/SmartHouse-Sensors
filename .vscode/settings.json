@@ -33,7 +33,20 @@
         "type_traits": "cpp",
         "tuple": "cpp",
         "typeinfo": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "random": "cpp",
+        "atomic": "cpp",
+        "bitset": "cpp",
+        "cstdarg": "cpp",
+        "ctime": "cpp",
+        "list": "cpp",
+        "iostream": "cpp",
+        "cinttypes": "cpp",
+        "regex": "cpp"
     },
-    "C_Cpp.dimInactiveRegions": true
+    "C_Cpp.dimInactiveRegions": true,
+    "terminal.integrated.env.osx": {
+        "PATH": "/Users/voicu/.platformio/penv/bin:/Users/voicu/.platformio/penv:/Library/Frameworks/Python.framework/Versions/3.7/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/voicu/development/flutter/bin:/usr/local/share/dotnet:~/.dotnet/tools:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/Applications/Xamarin Workbooks.app/Contents/SharedSupport/path-bin",
+        "PLATFORMIO_CALLER": "vscode"
+    }
 }

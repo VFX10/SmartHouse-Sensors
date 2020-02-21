@@ -1,14 +1,12 @@
 #pragma once
 
 #include <Arduino.h>
+#pragma once
+
 #include <ArduinoJson.h>
 #include <libs/TempSensor/TempSensorDefinition.hpp>
 
-TempSensor::TempSensor()
-{
-    this->dht->begin();
-}
-TempSensor::TempSensor(uint8_t pin)
+TempSensor::TempSensor(int pin = DHT11_DEFAULT_PIN)
 {
     this->dht = new DHT(pin, DHT11);
     this->dht->begin();
@@ -25,13 +23,12 @@ float TempSensor::readHumidity()
 
 String TempSensor::read()
 {
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject &json = jsonBuffer.createObject();
+    DynamicJsonDocument json(1024);
     json["temperature"] = readTemperature();
     json["humidity"] = readHumidity();
 
     String jsonString;
-    json.printTo(jsonString);
-    json.prettyPrintTo(Serial);
+    serializeJson(json, jsonString);
+    // json.prettyPrintTo(Serial);
     return jsonString;
 }

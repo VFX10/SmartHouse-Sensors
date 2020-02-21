@@ -1,24 +1,34 @@
 #pragma once
 #include <Arduino.h>
-#include <ArduinoJson.h>
+
 #include <Ticker.h>
-#include <WiFiManager.h>
+
+#include <libs/HardwareButtons/HardwareButtons.h>
+#include <libs/Relay/Relay.h>
+
+#include <ESPAsyncWebServer.h>
+#include <DNSServer.h>
+#include "AsyncJson.h"
+#include <config.h>
 
 class WiFiHelper
 {
 private:
-    static Ticker pairingModeTicker;
-    int httpCode = 0;
-
-    static bool shouldSaveConfig;
-    WiFiManager wifiManager;
+    Sensor *relay;
+    AsyncWebServer *webServer;
+    HardwareButtons hardwareButtons;
+    const byte DNS_PORT = 53;
+    IPAddress *apIP;
+    DNSServer dnsServer;
+    Ticker pairingModeTicker;
+    Ticker webServerConfigTicker;
     String ssidName, password;
-    void tick();
-    void getSavedConfig();
+    Config *config = new Config();
+    bool getSavedConfig();
 
 public:
-    WiFiHelper();
-    WiFiHelper(String, String);
+    WiFiHelper(Sensor *);
     void begin();
-    String server, port, freqMinutes, sensorName = "", sensorType;
+    void end();
+    String server, port, freqMinutes;
 };

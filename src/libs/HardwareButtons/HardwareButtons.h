@@ -1,31 +1,31 @@
 #pragma once
-#include <FS.h>
-#include <Arduino.h>
 #include <libs/HardwareButtons/HardwareButtonsDefinition.hpp>
+#include <libs/WiFiConfig/Wifihelper.h>
 
 HardwareButtons::HardwareButtons()
 {
-    //pinMode(RESET_BUTTON_DEFAULT_PIN, INPUT_PULLUP);
-    //pinMode(REBOOT_BUTTON_DEFAULT_PIN, INPUT);
     myBtn->begin();
 
     rebootTicker.attach(0.1, [&]() {
         myBtn->read();
-        if (myBtn->wasReleased()){
-            {
+        if (myBtn->wasReleased())
+        {
             Serial.println("Sensor will reboot now.");
+            // delay(500);
+            WiFi.stopSmartConfig();
             ESP.restart();
-        }
         }
         else if (myBtn->pressedFor(5000))
         {
+            WiFi.stopSmartConfig();
             digitalWrite(STATUS_LED_DEFAULT_PIN, LOW);
-            //while(!digitalRead(RESET_BUTTON_DEFAULT_PIN));
             Serial.println("Sensor will reset now.");
-            // SPIFFS.remove("/config.json");
-            this->mng.resetSettings();
-            delay(5000);
-            digitalWrite(STATUS_LED_DEFAULT_PIN, HIGH);
+            SPIFFS.remove("/config.json");
+            auto ticker = new Ticker();
+            ticker->once(5, []() {
+                digitalWrite(STATUS_LED_DEFAULT_PIN, HIGH);
+                ESP.reset();
+            });
         }
     });
 
@@ -33,10 +33,13 @@ HardwareButtons::HardwareButtons()
 }
 void HardwareButtons::instantReset()
 {
-    // pairingModeTicker.detach();
+    WiFi.stopSmartConfig();
     digitalWrite(STATUS_LED_DEFAULT_PIN, LOW);
     Serial.println("Sensor will reset now.");
-    this->mng.resetSettings();
-    delay(5000);
-    digitalWrite(STATUS_LED_DEFAULT_PIN, HIGH);
+    SPIFFS.remove("/config.json");
+    auto ticker = new Ticker();
+    ticker->once(5, []() {
+        digitalWrite(STATUS_LED_DEFAULT_PIN, HIGH);
+        ESP.reset();
+    });
 }

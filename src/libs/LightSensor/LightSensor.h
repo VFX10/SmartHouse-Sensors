@@ -1,31 +1,17 @@
-#include <Arduino.h>
-#include <Wire.h>
-#include <ArduinoJson.h>
+#pragma once
+
 #include <libs/LightSensor/LightSensorDefinition.hpp>
 
-String LightSensor::ReadLight()
+String LightSensor::read()
 {
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject &json = jsonBuffer.createObject();
+    DynamicJsonDocument json(1024);
     json["light"] = this->lightMeter.readLightLevel();
     String data;
-    json.prettyPrintTo(data);
-    json.prettyPrintTo(Serial);
+    serializeJson(json, data);
+    // json.prettyPrintTo(Serial);
     return data;
 }
-LightSensor::LightSensor()
-{
-    Wire.begin(SDA_DEFAULT_PIN, SCL_DEFAULT_PIN);
-    if (lightMeter.begin(READING_MODE_DEFAULT_PIN))
-    {
-        Serial.println(F("BH1750 begin with default values"));
-    }
-    else
-    {
-        Serial.println(F("Error initialising BH1750 with default values"));
-    }
-}
-LightSensor::LightSensor(int sda, int scl, BH1750::Mode readingMode)
+LightSensor::LightSensor(int sda = SDA_DEFAULT_PIN, int scl = SCL_DEFAULT_PIN, BH1750::Mode readingMode = READING_MODE_DEFAULT_PIN)
 {
     Wire.begin(sda, scl);
     if (lightMeter.begin(readingMode))
