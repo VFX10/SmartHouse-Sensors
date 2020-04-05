@@ -16,5 +16,5 @@ private:
 
 public:
     GasAndSmokeSensor(int, int);
-    String read();
+    DynamicJsonDocument read();
 };

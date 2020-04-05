@@ -1,4 +1,5 @@
 #pragma once
+
 #include <libs/TempSensor/TempSensor.h>
 
 #include <libs/Relay/Relay.h>
@@ -8,8 +9,12 @@
 #include <libs/UV_Sensor/UVSensor.h>
 #include <ArduinoJson.h>
 #include <FS.h>
+#include <libs/HardwareButtons/HardwareButtons.h>
+
 
 using namespace std;
+
+auto buttons = new HardwareButtons();
 typedef enum
 {
     SENSOR_UNDEFINED,
@@ -96,6 +101,7 @@ void Config::initPinsToGetConfig()
 
     if (!SPIFFS.exists("/config.json"))
     {
+        Serial.println("Config doesn't exist");
         DynamicJsonDocument json(1024);
         json["sensorName"] = this->random_string(10).c_str();
         json["macAddress"] = WiFi.macAddress();
@@ -163,11 +169,13 @@ String Config::readConfig()
                 Serial.println("Successfully read Json from EEPROM");
                 String data;
                 serializeJson(json, data);
+                serializeJsonPretty(json, Serial);
                 return data;
             }
             else
             {
                 Serial.println("Failed to load json config from EEPROM");
+                buttons->instantReset();
                 return "{}";
             }
             configFile.close();
@@ -179,6 +187,7 @@ bool Config::writeConfig(DynamicJsonDocument json)
 {
 
     File configFile = SPIFFS.open("/config.json", "w");
+
     serializeJson(json, configFile);
     configFile.close();
     return true;

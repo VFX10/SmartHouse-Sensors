@@ -12,5 +12,5 @@ private:
 
 public:
     InlineContact(int);
-    String read();
+    DynamicJsonDocument read();
 };

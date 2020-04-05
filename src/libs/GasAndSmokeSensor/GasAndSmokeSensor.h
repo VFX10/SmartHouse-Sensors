@@ -16,7 +16,7 @@ void GasAndSmokeSensor::calibrateSensor()
     Serial.println(this->mq2->getRo());
 }
 
-String GasAndSmokeSensor::read()
+DynamicJsonDocument GasAndSmokeSensor::read()
 {
 
     long methane = this->mq2->readMethane(), smoke = this->mq2->readSmoke();
@@ -37,5 +37,5 @@ String GasAndSmokeSensor::read()
         noTone(this->speakerPin);
     }
 
-    return jsonString;
+    return json;
 }

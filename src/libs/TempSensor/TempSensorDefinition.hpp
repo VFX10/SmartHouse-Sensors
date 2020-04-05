@@ -9,10 +9,10 @@ class TempSensor : public Sensor
 
 private:
     DHT *dht;
-    float readTemperature();
-    float readHumidity();
+    int readTemperature();
+    int readHumidity();
 
 public:
     TempSensor(int);
-    String read();
+    DynamicJsonDocument read();
 };

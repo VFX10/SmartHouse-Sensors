@@ -22,7 +22,9 @@ void Relay::changeState(int power)
 {
     digitalWrite(this->pin, power);
 }
-String Relay::read()
+DynamicJsonDocument Relay::read()
 {
-    return (String)digitalRead(this->pin);
+    DynamicJsonDocument json(1024);
+    json["status"] = digitalRead(this->pin);
+    return json;
 }

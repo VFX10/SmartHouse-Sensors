@@ -64,7 +64,7 @@ int UVSensor::getUVIndex()
     return -1;
 }
 
-String UVSensor::read()
+DynamicJsonDocument UVSensor::read()
 {
     int valueFromSensor = getUVIndex();
 
@@ -73,5 +73,5 @@ String UVSensor::read()
     String jsonString;
     serializeJson(json, jsonString);
     // json.prettyPrintTo(Serial);
-    return jsonString;
+    return json;
 }

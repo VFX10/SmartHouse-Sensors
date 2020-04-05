@@ -13,5 +13,5 @@ private:
 
 public:
     UVSensor(int);
-    String read();
+    DynamicJsonDocument read();
 };

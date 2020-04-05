@@ -17,5 +17,5 @@ private:
 public:
     Relay(int, int);
     void changeState(int);
-    String read();
+    DynamicJsonDocument read();
 };

@@ -12,23 +12,19 @@ TempSensor::TempSensor(int pin = DHT11_DEFAULT_PIN)
     this->dht->begin();
 }
 
-float TempSensor::readTemperature()
+int TempSensor::readTemperature()
 {
-    return (float)this->dht->readTemperature();
+    return (int)this->dht->readTemperature();
 }
-float TempSensor::readHumidity()
+int TempSensor::readHumidity()
 {
-    return (float)this->dht->readHumidity();
+    return (int)this->dht->readHumidity();
 }
 
-String TempSensor::read()
+DynamicJsonDocument TempSensor::read()
 {
     DynamicJsonDocument json(1024);
     json["temperature"] = readTemperature();
     json["humidity"] = readHumidity();
-
-    String jsonString;
-    serializeJson(json, jsonString);
-    // json.prettyPrintTo(Serial);
-    return jsonString;
+    return json;
 }

@@ -3,6 +3,7 @@
 MqttHelper::MqttHelper(Config *config = new Config(), Sensor *relay = nullptr, int port = 1883)
 {
     this->config = config;
+    this->relay = relay;
     auto address = this->config->getServerAddress();
     if (server->fromString(address))
     {
@@ -73,23 +74,31 @@ void MqttHelper::initMqtt()
             {
                 // digitalWrite(D8, LOW);
                 relay->changeState(HIGH);
+                // Serial.println(relay->read());
                 DynamicJsonDocument json(1024);
                 json["macAddress"] = WiFi.macAddress();
                 json["state"] = 1;
+                // json["account"] = "test@test.ro";
                 String data;
+                Serial.println("send");
+
                 serializeJsonPretty(json, Serial);
-                publish("response", data.c_str());
+                // publish("response", data.c_str());
             }
             else if (json["event"] == "off" && relay != nullptr)
             {
                 // digitalWrite(D8, HIGH);
+                // Serial.println(relay->read());
                 relay->changeState(LOW);
                 DynamicJsonDocument json(1024);
                 json["macAddress"] = WiFi.macAddress();
                 json["state"] = 0;
+                // json["account"] = "test@test.ro";
+
                 String data;
+                Serial.println("send");
                 serializeJsonPretty(json, Serial);
-                publish("response", data.c_str());
+                // publish("response", data.c_str());
             }
             else if (json["event"] == "config")
             {
@@ -107,6 +116,7 @@ void MqttHelper::initMqtt()
                     DynamicJsonDocument json(1024);
                     DynamicJsonDocument currentSettingsJson(1024);
                     deserializeJson(currentSettingsJson, buf.get());
+                    json["account"] = currentSettingsJson["account"];
                     json["server"] = currentSettingsJson["server"];
                     json["port"] = currentSettingsJson["port"];
                     json["freqMinutes"] = json["config"]["freq"];

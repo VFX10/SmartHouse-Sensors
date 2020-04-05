@@ -149,31 +149,48 @@ void WiFiHelper::begin()
             DynamicJsonDocument jsonResponse(1024);
             String response;
             int statusCode = 200;
+            Serial.println("Post data");
+             serializeJson(jsonData, Serial);
+            Serial.println("Post data end");
+
             if (!jsonData.isNull())
             {
-                DynamicJsonDocument currentConfig(1024);
+                Serial.println("received data");
+                // DynamicJsonDocument currentConfig(1024);
                 DynamicJsonDocument json(1024);
-                deserializeJson(currentConfig, config->readConfig());
+                // deserializeJson(currentConfig, config->readConfig());
 
-                json["sensorName"] = currentConfig["sensorName"];
-                json["freqMinutes"] = currentConfig["freqMinutes"];
-                if (jsonData.containsKey("sensorName"))
-                {
-                    json["sensorName"] = jsonData["sensorName"];
-                }
-                if (jsonData.containsKey("freqMinutes"))
-                {
-                    json["freqMinutes"] = jsonData["freqMinutes"];
-                }
+                // json["sensorName"] = currentConfig["sensorName"];
+                // json["freqMinutes"] = currentConfig["freqMinutes"];
+                // if (jsonData.containsKey("sensorName"))
+                // {
+                //     json["sensorName"] = jsonData["sensorName"];
+                // }
+                // if (jsonData.containsKey("freqMinutes"))
+                // {
+                //     json["freqMinutes"] = jsonData["freqMinutes"];
+                // }
+                json["account"] = jsonData["account"];
+                json["sensorName"] = jsonData["sensorName"];
+                json["freqMinutes"] = jsonData["freqMinutes"];
                 json["ssid"] = jsonData["ssid"];
                 json["password"] = jsonData["password"];
+                json["macAddress"] = WiFi.macAddress();
+                // json["roomId"] = jsonData["roomId"];
                 json["server"] = jsonData["server"];
                 json["port"] = jsonData["port"];
+
+                configDone = config->writeConfig(json);
+                // delay(200);
 
                 jsonResponse["macAddress"] = WiFi.macAddress();
                 jsonResponse["message"] = "Sensor will reboot in 5 secconds!";
                 serializeJson(jsonResponse, response);
-                configDone = config->writeConfig(json);
+                auto b = new Ticker();
+                b->once(5, [&]() {
+                    Serial.println("I'm rebooting.");
+                    ESP.restart();
+                });
             }
             else
             {
@@ -182,11 +199,8 @@ void WiFiHelper::begin()
                 Serial.println("failed to load json config");
                 configDone = false;
             }
-            auto b = new Ticker();
-            b->once(5, [&]() {
-                Serial.println("I'm rebooting.");
-                ESP.restart();
-            });
+
+            // delete b;
             request->send(statusCode, "application/json", response); });
 
     webServer->onNotFound([&](AsyncWebServerRequest *request) {

@@ -16,5 +16,5 @@ private:
 
 public:
     LightSensor(int, int, BH1750::Mode);
-    String read();
+    DynamicJsonDocument read();
 };
