@@ -5,9 +5,10 @@
 DynamicJsonDocument LightSensor::read()
 {
     DynamicJsonDocument json(1024);
-    json["light"] = this->lightMeter.readLightLevel();
-    String data;
-    serializeJson(json, data);
+    int light = (int)(this->lightMeter.readLightLevel());
+    json["light"] = light < 0 ? 0 : light;
+    // String data;
+    // serializeJson(json, data);
     // json.prettyPrintTo(Serial);
     return json;
 }

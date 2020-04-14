@@ -11,7 +11,6 @@
 #include <FS.h>
 #include <libs/HardwareButtons/HardwareButtons.h>
 
-
 using namespace std;
 
 auto buttons = new HardwareButtons();
@@ -23,7 +22,8 @@ typedef enum
     SENSOR_TEMP_AND_HUMIDITY,
     SENSOR_LIGHT,
     SENSOR_GAS_AND_SMOKE,
-    SENSOR_DOOR
+    SENSOR_DOOR,
+    SENSOR_POWER_CONSUMPTION
 } SENSOR_TYPE;
 
 SENSOR_TYPE sensorType = SENSOR_UNDEFINED;
@@ -32,20 +32,34 @@ class Config
 {
 
 private:
-    std::string random_string(size_t length)
-    {
-        auto randchar = []() -> char {
-            const char charset[] =
-                "0123456789"
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                "abcdefghijklmnopqrstuvwxyz";
-            const size_t max_index = (sizeof(charset) - 1);
-            return charset[rand() % max_index];
-        };
-        std::string str(length, 0);
-        std::generate_n(str.begin(), length, randchar);
-        return str;
-    }
+
+String random_string(const int len) {
+    String s = "";
+    for(int i = 0; i < len; i++)
+      {
+         byte randomValue = random(0, 36);
+         char letter = randomValue + 'a';
+         if(randomValue > 26)
+           letter = (randomValue - 26) + '0';
+         s += letter;
+      }
+
+    return s;
+}
+    // string random_string(size_t length)
+    // {
+    //     auto randchar = []() -> char {
+    //         const char charset[] =
+    //             "0123456789"
+    //             "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    //             "abcdefghijklmnopqrstuvwxyz";
+    //         const size_t max_index = (sizeof(charset) - 1);
+    //         return charset[rand() % max_index];
+    //     };
+    //     string str(length, 0);
+    //     generate_n(str.begin(), length, randchar);
+    //     return str;
+    // }
 
 public:
     Config() { SPIFFS.begin(); }
@@ -58,7 +72,7 @@ public:
 };
 void Config::initPinsToGetConfig()
 {
-    Serial.println(analogRead(A0) * (5.0 / 1023.0));
+    Serial.println(analogRead(A0));
     if (analogRead(A0) > 10 && analogRead(A0) < 100) // 10K
     {
         Serial.println("Switch");
@@ -78,6 +92,11 @@ void Config::initPinsToGetConfig()
     {
         Serial.println("Light");
         sensorType = SENSOR_LIGHT;
+    }
+    else if (analogRead(A0) > 980 && analogRead(A0) < 1000) // 10
+    {
+        Serial.println("POWER_CONSUMPTION");
+        sensorType = SENSOR_POWER_CONSUMPTION;
     }
     else if (analogRead(A0) >= 0 && digitalRead(D0) == LOW) // 4,7K
     {
@@ -103,7 +122,7 @@ void Config::initPinsToGetConfig()
     {
         Serial.println("Config doesn't exist");
         DynamicJsonDocument json(1024);
-        json["sensorName"] = this->random_string(10).c_str();
+        json["sensorName"] = this->random_string(10);
         json["macAddress"] = WiFi.macAddress();
         json["sensorType"] = (int)sensorType;
         json["freqMinutes"] = 10;

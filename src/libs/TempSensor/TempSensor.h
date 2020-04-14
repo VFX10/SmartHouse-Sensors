@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Arduino.h>
-#pragma once
 
 #include <ArduinoJson.h>
 #include <libs/TempSensor/TempSensorDefinition.hpp>

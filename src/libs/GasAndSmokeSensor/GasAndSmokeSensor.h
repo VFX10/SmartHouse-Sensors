@@ -26,16 +26,20 @@ DynamicJsonDocument GasAndSmokeSensor::read()
     json["methane"] = methane;
     json["smoke"] = smoke;
 
-    String jsonString;
-    serializeJson(json, jsonString);
+    // String jsonString;
+    // serializeJson(json, jsonString);
     // json.prettyPrintTo(Serial);
 
-    if (methane >= 20 || smoke >= 20)
+    if (methane >= 20 || smoke >= 40)
+    {
         tone(this->speakerPin, 2000, 1000);
+        json["warning"] = true;
+    }
     else
     {
         noTone(this->speakerPin);
+        json["warning"] = false;
     }
-
+    // serializeJson(json, jsonString);
     return json;
 }

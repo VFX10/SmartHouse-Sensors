@@ -2,13 +2,14 @@
 #include <libs/MqttHelper/MqttHelper.h>
 #include <libs/WiFiConfig/Wifihelper.h>
 #include <libs/OTAHelper/OTAHelper.h>
+#include <libs/PowerConsumptiom/PowerConsumption.hpp>
 #include <config.h>
 #include <Sensor.h>
 WiFiHelper *wifi;
 MqttHelper *mqttClient;
 DynamicJsonDocument doc(1024);
 DynamicJsonDocument prejson(1024);
-  DynamicJsonDocument configJson(1024);
+DynamicJsonDocument configJson(1024);
 
 String name;
 // auto buttons = new HardwareButtons();
@@ -18,9 +19,12 @@ void setup()
 {
   Serial.begin(9600);
   Config *config = new Config;
-
+  delay(200);
   config->initPinsToGetConfig();
-
+  // while(true) {
+  //   Serial.println(analogRead(A0));
+  //   delay(100);
+  // }
   switch (sensorType)
   {
   case SENSOR_UV:
@@ -51,6 +55,11 @@ void setup()
     break;
   case SENSOR_TEMP_AND_HUMIDITY:
     sensor = new TempSensor();
+    wifi = new WiFiHelper();
+    mqttClient = new MqttHelper();
+    break;
+  case SENSOR_POWER_CONSUMPTION:
+    sensor = new PowerConsumptionSensor();
     wifi = new WiFiHelper();
     mqttClient = new MqttHelper();
     break;
@@ -93,7 +102,7 @@ void setup()
     }
     else
     {
-  Serial.println(name);
+      Serial.println(name);
 
       mqttClient->connect(name);
     }
@@ -146,6 +155,63 @@ String readData()
       return data;
     }
   }
+  else if (sensorType == SENSOR_POWER_CONSUMPTION)
+  {
+    DynamicJsonDocument sensorData = sensor->read();
+
+    json["macAddress"] = WiFi.macAddress();
+    json["data"] = sensorData;
+    json["account"] = configJson["account"];
+    String data, prevData;
+    serializeJson(json, data);
+    float powerDiference = (float)json["data"]["power"] - (float)prejson["data"]["power"];
+    Serial.println(powerDiference);
+    if (sqrt(pow(powerDiference, 2)) >= 1.0f && json["data"]["power"] >= 0)
+    {
+      serializeJsonPretty(json, Serial);
+      prejson["data"] = json["data"];
+      Serial.println("Data changed. Send it to server");
+      return data;
+    }
+  }
+  else if (sensorType == SENSOR_LIGHT)
+  {
+    DynamicJsonDocument sensorData = sensor->read();
+
+    json["macAddress"] = WiFi.macAddress();
+    json["data"] = sensorData;
+    json["account"] = configJson["account"];
+    String data, prevData;
+    serializeJson(json, data);
+    int lightDiference = (int)json["data"]["light"] - (int)prejson["data"]["light"];
+    if (sqrt(pow(lightDiference, 2)) >= 10)
+    {
+      serializeJsonPretty(json, Serial);
+      prejson["data"] = json["data"];
+      Serial.println("Data changed. Send it to server");
+      return data;
+    }
+  }
+  else if (sensorType == SENSOR_GAS_AND_SMOKE)
+  {
+    DynamicJsonDocument sensorData = sensor->read();
+
+    json["macAddress"] = WiFi.macAddress();
+    json["data"] = sensorData;
+    json["account"] = configJson["account"];
+    String data, prevData;
+    serializeJson(json, data);
+    int methaneDiference = (int)json["data"]["methane"] - (int)prejson["data"]["methane"];
+    int smokeDiference = (int)json["data"]["smoke"] - (int)prejson["data"]["smoke"];
+
+    if (sqrt(pow(methaneDiference, 2)) >= 5.0f || sqrt(pow(smokeDiference, 2)) >= 5.0f)
+    {
+      serializeJsonPretty(json, Serial);
+      prejson["data"] = json["data"];
+      Serial.println("Data changed. Send it to server");
+      return data;
+    }
+  }
   else
   {
     DynamicJsonDocument sensorData = sensor->read();
@@ -160,6 +226,7 @@ String readData()
       serializeJsonPretty(json, Serial);
       prejson["data"] = json["data"];
       Serial.println("Data changed. Send it to server");
+      delay(200);
       return data;
     }
   }
@@ -182,6 +249,25 @@ void loop()
     mqttClient->connect(name);
     Serial.println("Lost Connection to MQTT Server! Reconnect!");
   }
-  //delay(atoi(wifi.freqMinutes.c_str()) * 60 * 1000);
-  delay(1000);
+  if (sensorType == SENSOR_SWITCH || sensorType == SENSOR_GAS_AND_SMOKE || sensorType == SENSOR_DOOR)
+  {
+    delay(100);
+  }
+  else if (sensorType == SENSOR_LIGHT)
+  {
+    delay(1000);
+  }
+  else
+  {
+    if ((int)(configJson["freqMinutes"]) == 0)
+    {
+      delay(1000);
+    }
+    else
+    {
+      delay((int)(configJson["freqMinutes"]) * 60 * 1000);
+    }
+  }
+
+  // delay(1000);
 }
