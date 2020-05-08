@@ -8,6 +8,7 @@ UVSensor::UVSensor(int pin = UV_SENSOR_DEFAULT_PIN)
 int UVSensor::getUVIndex()
 {
     int voltage = (analogRead(this->pin) * (5.0 / 1023.0)) * 1000;
+    // Serial.println
 
     if (voltage < 50)
     {

@@ -73,42 +73,39 @@ public:
 void Config::initPinsToGetConfig()
 {
     Serial.println(analogRead(A0));
-    if (analogRead(A0) > 10 && analogRead(A0) < 100) // 10K
-    {
-        Serial.println("Switch");
-        sensorType = SENSOR_SWITCH;
-    }
-    else if (analogRead(A0) > 100 && analogRead(A0) < 330) // GAS
+    if (digitalRead(D0) == LOW && digitalRead(D7) == LOW) // GAS
     {
         Serial.println("Gas");
         sensorType = SENSOR_GAS_AND_SMOKE;
-    }
-    else if (analogRead(A0) > 490 && analogRead(A0) < 600) // 100
+    } else if (analogRead(A0) > 10 && analogRead(A0) < 100 && digitalRead(D0) == LOW && digitalRead(D7) == HIGH) // 10K
+    {
+        Serial.println("Switch");
+        sensorType = SENSOR_SWITCH;
+    } else if (analogRead(A0) >= 400 && analogRead(A0) < 700 && digitalRead(D0) == HIGH && digitalRead(D7) == HIGH) // 100
     {
         Serial.println("Temp");
         sensorType = SENSOR_TEMP_AND_HUMIDITY;
-    }
-    else if (analogRead(A0) > 700 && analogRead(A0) < 800) // 22
+    } else if (analogRead(A0) > 700 && analogRead(A0) < 800 && digitalRead(D0) == LOW && digitalRead(D7) == HIGH) // 22
     {
         Serial.println("Light");
         sensorType = SENSOR_LIGHT;
     }
-    else if (analogRead(A0) > 980 && analogRead(A0) < 1000) // 10
+    else if (analogRead(A0) > 970 && analogRead(A0) < 1000 && digitalRead(D0) == LOW && digitalRead(D7) == HIGH) // 10
     {
         Serial.println("POWER_CONSUMPTION");
         sensorType = SENSOR_POWER_CONSUMPTION;
     }
-    else if (analogRead(A0) >= 0 && digitalRead(D0) == LOW) // 4,7K
+    else if (analogRead(A0) >= 0 && digitalRead(D0) == LOW && digitalRead(D7) == HIGH) // 4,7K
     {
         Serial.println("UV");
         sensorType = SENSOR_UV;
     }
-    else if (analogRead(A0) > 0 && digitalRead(D0) == HIGH)
+    else if (analogRead(A0) > 0 && digitalRead(D0) == HIGH && digitalRead(D7) == HIGH)
     {
         Serial.println("Door");
         sensorType = SENSOR_DOOR;
     }
-    else if (analogRead(A0) == 1024 && digitalRead(D0) == HIGH)
+    else if (analogRead(A0) == 1024 && digitalRead(D0) == HIGH && digitalRead(D7) == HIGH)
     {
         Serial.println("Door");
         sensorType = SENSOR_DOOR;

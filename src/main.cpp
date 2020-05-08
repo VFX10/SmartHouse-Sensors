@@ -23,6 +23,10 @@ void setup()
   config->initPinsToGetConfig();
   // while(true) {
   //   Serial.println(analogRead(A0));
+  //   Serial.print("Type: ");
+  //   Serial.println(sensorType);
+  //   Serial.println(digitalRead(D7));
+  //   Serial.println(digitalRead(D0));
   //   delay(100);
   // }
   switch (sensorType)
@@ -38,9 +42,15 @@ void setup()
     mqttClient = new MqttHelper();
     break;
   case SENSOR_GAS_AND_SMOKE:
+  // preheat sensor
+  Serial.println("Preheat Sensor started");
+    delay(30000);
+  Serial.println("Preheat Sensor finished");
+
     sensor = new GasAndSmokeSensor();
     wifi = new WiFiHelper();
     mqttClient = new MqttHelper();
+    
     break;
   case SENSOR_LIGHT:
     sensor = new LightSensor();
@@ -141,21 +151,20 @@ String readData()
     json["account"] = configJson["account"];
     String data, prevData;
     serializeJson(json, data);
-    int tempDiference = (int)json["data"]["temperature"] - (int)prejson["data"]["temperature"];
-    int humidityDiference = (int)json["data"]["humidity"] - (int)prejson["data"]["humidity"];
-    Serial.println(sqrt(pow(tempDiference, 2)));
-    Serial.println(sqrt(pow(humidityDiference, 2)));
+    // int tempDiference = (int)json["data"]["temperature"] - (int)prejson["data"]["temperature"];
+    // int humidityDiference = (int)json["data"]["humidity"] - (int)prejson["data"]["humidity"];
+    // Serial.println(sqrt(pow(tempDiference, 2)));
+    // Serial.println(sqrt(pow(humidityDiference, 2)));
 
-    if ((int)json["data"]["temperature"] <= 100 && (int)json["data"]["humidity"] <= 100 && (sqrt(pow(tempDiference, 2)) >= 2 || sqrt(pow(humidityDiference, 2)) >= 2))
+    if ((int)json["data"]["temperature"] <= 100 && (int)json["data"]["humidity"] <= 100)
     {
       serializeJsonPretty(json, Serial);
-
-      prejson["data"] = json["data"];
-      Serial.println("Data changed. Send it to server");
+      prejson = json;
       return data;
     }
   }
-  else if (sensorType == SENSOR_POWER_CONSUMPTION)
+  else 
+  if (sensorType == SENSOR_POWER_CONSUMPTION)
   {
     DynamicJsonDocument sensorData = sensor->read();
 
@@ -164,13 +173,12 @@ String readData()
     json["account"] = configJson["account"];
     String data, prevData;
     serializeJson(json, data);
-    float powerDiference = (float)json["data"]["power"] - (float)prejson["data"]["power"];
-    Serial.println(powerDiference);
-    if (sqrt(pow(powerDiference, 2)) >= 1.0f && json["data"]["power"] >= 0)
+    // float powerDiference = (float)json["data"]["power"] - (float)prejson["data"]["power"];
+    // Serial.println(powerDiference);
+    if (json["data"]["power"] >= 0)
     {
       serializeJsonPretty(json, Serial);
-      prejson["data"] = json["data"];
-      Serial.println("Data changed. Send it to server");
+      prejson = json;
       return data;
     }
   }
@@ -187,8 +195,7 @@ String readData()
     if (sqrt(pow(lightDiference, 2)) >= 10)
     {
       serializeJsonPretty(json, Serial);
-      prejson["data"] = json["data"];
-      Serial.println("Data changed. Send it to server");
+      prejson = json;
       return data;
     }
   }
@@ -201,14 +208,25 @@ String readData()
     json["account"] = configJson["account"];
     String data, prevData;
     serializeJson(json, data);
+    if(prejson.isNull()){
+      prejson = json;
+      serializeJsonPretty(json, Serial);
+      return data;
+    }
     int methaneDiference = (int)json["data"]["methane"] - (int)prejson["data"]["methane"];
     int smokeDiference = (int)json["data"]["smoke"] - (int)prejson["data"]["smoke"];
 
-    if (sqrt(pow(methaneDiference, 2)) >= 5.0f || sqrt(pow(smokeDiference, 2)) >= 5.0f)
+    // Serial.println(sqrt(pow(methaneDiference, 2)) >= 50.0f || sqrt(pow(smokeDiference, 2)) >= 50.0f);
+    if ((bool)json["data"]["warning"] != (bool) prejson["data"]["warning"])
     {
       serializeJsonPretty(json, Serial);
-      prejson["data"] = json["data"];
-      Serial.println("Data changed. Send it to server");
+      prejson = json;
+      return data;
+    }
+    else if ((sqrt(pow(methaneDiference, 2)) >= 50.0f || sqrt(pow(smokeDiference, 2)) >= 50.0f) && (bool) json["data"]["warning"] == false)
+    {
+      serializeJsonPretty(json, Serial);
+      prejson = json;
       return data;
     }
   }
@@ -224,8 +242,7 @@ String readData()
     if (json["data"] != prejson["data"])
     {
       serializeJsonPretty(json, Serial);
-      prejson["data"] = json["data"];
-      Serial.println("Data changed. Send it to server");
+      prejson = json;
       delay(200);
       return data;
     }
@@ -241,6 +258,7 @@ void loop()
     String data = readData();
     if (data != "")
     {
+      Serial.println("Data changed. Send it to server");
       mqttClient->publish("SensorsDataChannel", data.c_str());
     }
   }
@@ -249,9 +267,9 @@ void loop()
     mqttClient->connect(name);
     Serial.println("Lost Connection to MQTT Server! Reconnect!");
   }
-  if (sensorType == SENSOR_SWITCH || sensorType == SENSOR_GAS_AND_SMOKE || sensorType == SENSOR_DOOR)
+  if (sensorType == SENSOR_SWITCH || sensorType == SENSOR_GAS_AND_SMOKE || sensorType == SENSOR_DOOR || sensorType == SENSOR_UV)
   {
-    delay(100);
+    delay(300);
   }
   else if (sensorType == SENSOR_LIGHT)
   {
