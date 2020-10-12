@@ -83,7 +83,8 @@ void WiFiHelper::begin()
         }
     });
 
-    webServer->on("/api/events", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [&](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+    webServer->on(
+        "/api/events", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [&](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
             auto jsonData = handleTest(request, data);
             DynamicJsonDocument jsonResponse(1024);
         String event;
@@ -144,13 +145,14 @@ void WiFiHelper::begin()
             }
         }
         request->send(500, "application/json", "{\"error\": \"Wrong command\"}"); });
-    webServer->on("/api/config", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [&](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+    webServer->on(
+        "/api/config", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [&](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
             auto jsonData = handleTest(request, data);
             DynamicJsonDocument jsonResponse(1024);
             String response;
             int statusCode = 200;
             Serial.println("Post data");
-             serializeJson(jsonData, Serial);
+            serializeJson(jsonData, Serial);
             Serial.println("Post data end");
 
             if (!jsonData.isNull())
@@ -172,6 +174,7 @@ void WiFiHelper::begin()
                 // }
                 json["account"] = jsonData["account"];
                 json["sensorName"] = jsonData["sensorName"];
+                json["sensorType"] = jsonData["sensorType"];
                 json["freqMinutes"] = jsonData["freqMinutes"];
                 json["ssid"] = jsonData["ssid"];
                 json["password"] = jsonData["password"];
